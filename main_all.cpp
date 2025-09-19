@@ -1,4 +1,3 @@
-// main_all.cpp
 #include <iostream>
 #include <iomanip>
 #include <filesystem>
@@ -9,7 +8,6 @@
 #include <string>
 #include <map>
 #include <sstream>
-
 #include <opencv2/opencv.hpp>
 
 // ========== 1. 外部头文件 ==========
@@ -47,8 +45,8 @@ struct Config
     std::string labelOut;           // 检测标签保存路径（文件或目录）
     std::string trackImgOut;        // 仅跟踪任务时有效，可空
     int         classNum      = 5;
-    float       confThresh    = 0.25f;
-    float       nmsThresh     = 0.45f;
+    float       confThresh    = 0.20f;
+    float       nmsThresh     = 0.25f;
     int         modelW        = 640;
     int         modelH        = 640;
     int         modelBoxNum   = 8400;
@@ -130,6 +128,59 @@ private:
     }
 };
 
+// --- MODIFIED: LetterboxParams struct to store transformation info ---
+struct LetterboxParams {
+    float scale_factor = 1.0f;
+    int original_width = 0;
+    int original_height = 0;
+    bool letterbox_applied = false;  // 标记是否进行了LetterBox操作
+};
+
+// --- MODIFIED: Helper function for letterboxing (左上角对齐) ---
+static cv::Mat applyLetterbox(const cv::Mat& src_img, int target_w, int target_h, LetterboxParams& params) {
+    params.original_width = src_img.cols;
+    params.original_height = src_img.rows;
+    params.letterbox_applied = true;
+
+    float ratio_w = (float)target_w / src_img.cols;
+    float ratio_h = (float)target_h / src_img.rows;
+    params.scale_factor = std::min(ratio_w, ratio_h); // 选择较小的缩放因子以适应目标尺寸
+
+    int new_w = static_cast<int>(src_img.cols * params.scale_factor);
+    int new_h = static_cast<int>(src_img.rows * params.scale_factor);
+
+    cv::Mat resized_img;
+    cv::resize(src_img, resized_img, cv::Size(new_w, new_h), 0, 0, cv::INTER_AREA);
+
+    cv::Mat letterboxed_img = cv::Mat::zeros(target_h, target_w, CV_8UC3); // 创建黑色背景图像
+    // 左上角对齐，将缩放后的图像放在左上角
+    resized_img.copyTo(letterboxed_img(cv::Rect(0, 0, new_w, new_h)));
+
+    return letterboxed_img;
+}
+
+// --- MODIFIED: Helper function to reverse letterbox transformation for OBBBoundingBox ---
+// 将OBBBoundingBox的坐标从LetterBox图像空间还原到原始图像空间
+static void reverseLetterbox(OBBBoundingBox& obb, const LetterboxParams& params) {
+    // 仅当实际进行了Letterbox操作时才进行还原
+    if (!params.letterbox_applied) {
+        return; // 未进行Letterbox，无需还原
+    }
+
+    // 缩放回原始图像尺寸（左上角对齐，所以不需要减去填充量）
+    obb.cx /= params.scale_factor;
+    obb.cy /= params.scale_factor;
+    obb.width /= params.scale_factor;
+    obb.height /= params.scale_factor;
+
+    // 边界钳位（可选，但有助于防止坐标超出原始图像范围）
+    obb.cx = std::max(0.0f, std::min((float)params.original_width, obb.cx));
+    obb.cy = std::max(0.0f, std::min((float)params.original_height, obb.cy));
+    obb.width = std::max(0.0f, obb.width);
+    obb.height = std::max(0.0f, obb.height);
+}
+
+
 /* ----------------------------------------------------------
  * YoloOBB 封装
  * ---------------------------------------------------------- */
@@ -147,34 +198,81 @@ public:
                 std::vector<OBBBoundingBox>& outOBBs,
                 std::vector<Object_OBB>& outObjects)
     {
-        if (!inference_.preprocessImage(imagePath)) return false;
-        std::vector<InferenceOutput> outs;
-        if (!inference_.runModelInference(outs)) return false;
-
-        cv::Mat src = cv::imread(imagePath);
+        cv::Mat src = cv::imread(imagePath); // 读取原始图像
         if (src.empty()) return false;
 
-        float* ptr = static_cast<float*>(outs[0].data.get());
-        OBBPostProcessor post(cfg_.modelOutputBoxNum, cfg_.classNum);
+        // --- MODIFIED: 判断是否需要LetterBox缩放 ---
+        bool need_letterbox = (src.cols != cfg_.modelWidth || src.rows != cfg_.modelHeight);
         
-        // 根据模型类型选择不同的后处理方法
-        std::vector<OBBBoundingBox> boxes;
-        if (modelType_ == "YOLO11_OBB") {
-            boxes = post.parseOutput_YOLO11OBB(ptr, 
-                                     src.cols, src.rows,
-                                     cfg_.modelWidth, cfg_.modelHeight,
-                                     cfg_.confidenceThreshold);
-        } else if (modelType_ == "YOLOV8_OBB") {
-            boxes = post.parseOutput(ptr, 
-                                   src.cols, src.rows,
-                                   cfg_.modelWidth, cfg_.modelHeight,
-                                   cfg_.confidenceThreshold);
-        } else {
-            std::cerr << "Unsupported model type: " << modelType_ << std::endl;
-            return false;
+        if (!need_letterbox) {
+            // --- 不需要缩放，直接使用原始推理流程 ---
+            letterbox_params_ = {}; // 重置参数
+            letterbox_params_.letterbox_applied = false;
+            letterbox_params_.original_width = src.cols;
+            letterbox_params_.original_height = src.rows;
+            letterbox_params_.scale_factor = 1.0f;
+
+            if (!inference_.preprocessImage(imagePath)) return false;
+            std::vector<InferenceOutput> outs;
+            if (!inference_.runModelInference(outs)) return false;
+
+            float* ptr = static_cast<float*>(outs[0].data.get());
+            OBBPostProcessor post(cfg_.modelOutputBoxNum, cfg_.classNum);
+            
+            // 根据模型类型选择不同的后处理方法
+            std::vector<OBBBoundingBox> boxes;
+            if (modelType_ == "YOLO11_OBB") {
+                boxes = post.parseOutput_YOLO11OBB(ptr, cfg_.confidenceThreshold);
+            } else if (modelType_ == "YOLOV8_OBB") {
+                boxes = post.parseOutput(ptr, cfg_.confidenceThreshold);
+            } else {
+                std::cerr << "Unsupported model type: " << modelType_ << std::endl;
+                return false;
+            }
+            
+            outOBBs = OBBNMSProcessor::applyNMS(boxes, cfg_.nmsThreshold);
         }
-        
-        outOBBs = OBBNMSProcessor::applyNMS(boxes, cfg_.nmsThreshold);
+        else {
+            // --- 需要LetterBox缩放 ---
+            cv::Mat processed_img = applyLetterbox(src, cfg_.modelWidth, cfg_.modelHeight, letterbox_params_);
+
+            // 将处理后的图像保存到临时文件
+            std::string temp_img_path = "temp_processed_image.jpg";
+            cv::imwrite(temp_img_path, processed_img);
+
+            // 调用推理引擎的预处理和推理方法
+            if (!inference_.preprocessImage(temp_img_path)) {
+                fs::remove(temp_img_path); // 清理临时文件
+                return false;
+            }
+            std::vector<InferenceOutput> outs;
+            if (!inference_.runModelInference(outs)) {
+                fs::remove(temp_img_path); // 清理临时文件
+                return false;
+            }
+            fs::remove(temp_img_path); // 推理完成后清理临时文件
+
+            float* ptr = static_cast<float*>(outs[0].data.get());
+            OBBPostProcessor post(cfg_.modelOutputBoxNum, cfg_.classNum);
+            
+            // 根据模型类型选择不同的后处理方法
+            std::vector<OBBBoundingBox> boxes;
+            if (modelType_ == "YOLO11_OBB") {
+                boxes = post.parseOutput_YOLO11OBB(ptr, cfg_.confidenceThreshold);
+            } else if (modelType_ == "YOLOV8_OBB") {
+                boxes = post.parseOutput(ptr, cfg_.confidenceThreshold);
+            } else {
+                std::cerr << "Unsupported model type: " << modelType_ << std::endl;
+                return false;
+            }
+            
+            outOBBs = OBBNMSProcessor::applyNMS(boxes, cfg_.nmsThreshold);
+
+            // --- 遍历所有检测到的OBB，将其坐标还原到原始图像尺寸 ---
+            for (auto& obb : outOBBs) {
+                reverseLetterbox(obb, letterbox_params_);
+            }
+        }
 
         // 转换为 Object_OBB 格式
         outObjects.clear();
@@ -200,9 +298,8 @@ private:
     std::string modelType_;
     std::vector<std::string> labels_;
     YOLOOBBInference inference_;
+    LetterboxParams letterbox_params_; // 存储LetterBox参数
 };
-
-// YoloOBBWrapper类的Detect方法修改
 
 /* ----------------------------------------------------------
  * 绘制 OBB
@@ -223,61 +320,39 @@ static void drawOBB(cv::Mat& img, const OBBBoundingBox& obb,
         : text;
     int baseline = 0;
     cv::Size ts = cv::getTextSize(txt, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
+    // 调整文本位置，确保在框的上方且不超出图像边界
     int tx0 = std::max(0, int(std::round(obb.cx - ts.width / 2.f)));
-    int ty0 = std::max(0, int(std::round(obb.cy - obb.height / 2 - 6)));
+    int ty0 = std::max(ts.height, int(std::round(obb.cy - obb.height / 2 - 6))); // 确保文本在图像顶部有空间
     cv::putText(img, txt, cv::Point(tx0, ty0), cv::FONT_HERSHEY_SIMPLEX,
                 0.5, color, 1);
 }
 
-// 重载版本：从 cv::RotatedRect 绘制 OBB
-static void drawOBBFromRotatedRect(cv::Mat& img, const cv::RotatedRect& rect,
-                                   const cv::Scalar& color, const std::string& text = "")
+// 从STrack_obb绘制OBB
+static void drawTrackOBB(cv::Mat& img, const STrack_obb& track,
+                        const cv::Scalar& color, const std::string& text = "")
 {
-    cv::Point2f vertices[4];
-    rect.points(vertices);
+    // 从STrack_obb构造OBBBoundingBox用于绘制
+    OBBBoundingBox obb;
+    obb.cx = track.tlwh[0];      // cx
+    obb.cy = track.tlwh[1];      // cy
+    obb.width = track.tlwh[2];   // width
+    obb.height = track.tlwh[3];  // height
+    obb.angle = track.tlwh[4];   // angle
     
+    auto pts_f = obb.getCornerPoints();
     std::vector<cv::Point> pts;
-    for (int i = 0; i < 4; i++) {
-        pts.emplace_back(cv::Point(int(std::round(vertices[i].x)), int(std::round(vertices[i].y))));
-    }
-    
+    for (auto& p : pts_f) pts.emplace_back(cv::Point(int(std::round(p.x)), int(std::round(p.y))));
     const cv::Point* ppt = pts.data();
     int n = int(pts.size());
     cv::polylines(img, &ppt, &n, 1, true, color, 2);
-    cv::circle(img, cv::Point(int(std::round(rect.center.x)), int(std::round(rect.center.y))),
+    cv::circle(img, cv::Point(int(std::round(obb.cx)), int(std::round(obb.cy))),
                3, color, -1);
     
     if (!text.empty()) {
         int baseline = 0;
         cv::Size ts = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        int tx0 = std::max(0, int(std::round(rect.center.x - ts.width / 2.f)));
-        int ty0 = std::max(0, int(std::round(rect.center.y - rect.size.height / 2 - 6)));
-        cv::putText(img, text, cv::Point(tx0, ty0), cv::FONT_HERSHEY_SIMPLEX,
-                    0.5, color, 1);
-    }
-}
-
-static void drawOBBFromRotatedRect(cv::Mat& img, const OBBBoundingBox& rect,
-                                   const cv::Scalar& color, const std::string& text = "")
-{
-    std::vector<cv::Point2f> vertices = rect.getCornerPoints();
-    
-    std::vector<cv::Point> pts;
-    for (int i = 0; i < 4; i++) {
-        pts.emplace_back(cv::Point(int(std::round(vertices[i].x)), int(std::round(vertices[i].y))));
-    }
-    
-    const cv::Point* ppt = pts.data();
-    int n = int(pts.size());
-    cv::polylines(img, &ppt, &n, 1, true, color, 2);
-    cv::circle(img, cv::Point(int(std::round(rect.cx)), int(std::round(rect.cy))),
-               3, color, -1);
-    
-    if (!text.empty()) {
-        int baseline = 0;
-        cv::Size ts = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseline);
-        int tx0 = std::max(0, int(std::round(rect.cx - ts.width / 2.f)));
-        int ty0 = std::max(0, int(std::round(rect.cy - rect.height / 2 - 6)));
+        int tx0 = std::max(0, int(std::round(obb.cx - ts.width / 2.f)));
+        int ty0 = std::max(ts.height, int(std::round(obb.cy - obb.height / 2 - 6)));
         cv::putText(img, text, cv::Point(tx0, ty0), cv::FONT_HERSHEY_SIMPLEX,
                     0.5, color, 1);
     }
@@ -350,7 +425,7 @@ static void runDetect(const Config& config)
         std::vector<OBBBoundingBox> obbs;
         std::vector<Object_OBB> objects;
         auto t0 = steady_clock::now();
-        bool ok = detector.Detect(inPath.string(), obbs, objects);
+        bool ok = detector.Detect(inPath.string(), obbs, objects); // 调用修改后的Detect方法
         auto t1 = steady_clock::now();
         if (!ok) continue;
 
@@ -359,7 +434,7 @@ static void runDetect(const Config& config)
         ++done;
 
         /* 画框 */
-        cv::Mat res = img.clone();
+        cv::Mat res = img.clone(); // 在原始图像上绘制
         const auto& labels = detector.getLabels();
         for (const auto& o : obbs) {
             std::string label = (o.classIndex < labels.size()) ? 
@@ -404,11 +479,11 @@ static void runTrack(const Config& config)
     cfg.classNum = config.classNum;
     cfg.confidenceThreshold = config.confThresh;
     cfg.nmsThreshold = config.nmsThresh;
-
+    
     YoloOBBWrapper detector(cfg, config.modelType, config.classLabels);
     if (!detector.Init()) { std::cerr << "Init detector failed.\n"; return; }
 
-    BYTETracker_obb tracker(30, 30);
+    BYTETracker_obb tracker(30, 10);
 
     fs::create_directories(config.imgOut);
     fs::create_directories(config.labelOut);
@@ -430,7 +505,7 @@ static void runTrack(const Config& config)
         std::vector<OBBBoundingBox> obbs; 
         std::vector<Object_OBB> objects;
         auto t0 = steady_clock::now();
-        bool ok = detector.Detect(imgPath, obbs, objects);
+        bool ok = detector.Detect(imgPath, obbs, objects); 
         auto t1 = steady_clock::now();
         if (!ok) continue;
         int64_t detUs = duration_cast<microseconds>(t1 - t0).count();
@@ -443,43 +518,11 @@ static void runTrack(const Config& config)
         int64_t trkUs = duration_cast<microseconds>(t1 - t0).count();
         totalTrkUs += trkUs;
 
-        /* 关联 obb -> track_id，使用ProbIoU计算 */
-        std::map<int, OBBBoundingBox> tid2obb;
-
-        for (const auto& trk : stracks)
-        {
-            float bestIou = 0; 
-            int bestIdx = -1;
-            
-            // 构造跟踪目标的 OBBBoundingBox
-            OBBBoundingBox trkOBB;
-            trkOBB.cx = trk.tlwh[0];      // cx
-            trkOBB.cy = trk.tlwh[1];      // cy
-            trkOBB.width = trk.tlwh[2];   // width
-            trkOBB.height = trk.tlwh[3];  // height
-            trkOBB.angle = trk.tlwh[4];   // angle
-            
-            for (size_t k = 0; k < obbs.size(); ++k)
-            {
-                // 使用ProbIoU计算相似度
-                float iou = OBBNMSProcessor::calculateProbIOU(trkOBB, obbs[k], false, 1e-7f);
-                
-                if (iou > bestIou) { 
-                    bestIou = iou; 
-                    bestIdx = int(k); 
-                }
-            }
-            
-            if (bestIdx >= 0 && bestIou > 0.1f) { // 设置一个最小IoU阈值
-                tid2obb[trk.track_id] = obbs[bestIdx];
-            }
-        }
-
         /* 保存检测图/标签 */
         const cv::Scalar colors[] = {
             {255,0,0},{0,255,0},{0,0,255},{255,255,0},{255,0,255},{0,255,255}
         };
-        cv::Mat detImg = img.clone();
+        cv::Mat detImg = img.clone(); // 在原始图像上绘制
         const auto& labels = detector.getLabels();
         for (const auto& o : obbs) {
             std::string label = (o.classIndex < labels.size()) ? 
@@ -498,34 +541,17 @@ static void runTrack(const Config& config)
             folab << '\n';
         }
 
-        /* 保存跟踪图（可选） */
+        /* 保存跟踪图（可选） - 直接使用跟踪结果 */
         if (!config.trackImgOut.empty())
         {
-            cv::Mat trkImg = img.clone();
+            cv::Mat trkImg = img.clone(); // 在原始图像上绘制
             for (const auto& trk : stracks)
             {
                 cv::Scalar color = tracker.get_color(trk.track_id);
-                int cx = int(trk.tlwh[0]);  // 中心点x
-                int cy = int(trk.tlwh[1]);  // 中心点y
-                cv::putText(trkImg, cv::format("%d", trk.track_id),
-                            cv::Point(cx - 10, cy), 0, 0.6, color, 2, cv::LINE_AA);
-                            
-                auto it = tid2obb.find(trk.track_id);
-                if (it != tid2obb.end()) {
-                    std::string label = (it->second.classIndex < labels.size()) ? 
-                                       labels[it->second.classIndex] : "unknown";
-                    std::string text = "ID:" + std::to_string(trk.track_id) + " " + label;
-                    drawOBB(trkImg, it->second, color, text);
-                } else {
-                    // 如果没有关联到检测结果，直接用跟踪结果画框
-                    OBBBoundingBox trkOBB;
-                    trkOBB.cx = trk.tlwh[0];      // cx
-                    trkOBB.cy = trk.tlwh[1];      // cy
-                    trkOBB.width = trk.tlwh[2];   // width
-                    trkOBB.height = trk.tlwh[3];  // height
-                    trkOBB.angle = trk.tlwh[4];   // angle
-                    drawOBBFromRotatedRect(trkImg, trkOBB, color, cv::format("ID:%d", trk.track_id));
-                }
+                
+                // 直接使用跟踪结果绘制，不进行检测关联
+                std::string text = cv::format("ID:%d", trk.track_id);
+                drawTrackOBB(trkImg, trk, color, text);
             }
             cv::imwrite(str_format("%s/%06d.jpg", config.trackImgOut.c_str(), no), trkImg);
         }
@@ -535,8 +561,10 @@ static void runTrack(const Config& config)
 
     double fpsDet = frameCnt * 1'000'000.0 / totalDetUs;
     double fpsTrk = frameCnt * 1'000'000.0 / totalTrkUs;
+    double fps = (frameCnt * 1'000'000.0) / ( totalTrkUs + totalDetUs);
     std::cout << "[Track] 检测模块平均 FPS = " << fpsDet
-              << "  |  跟踪模块平均 FPS = " << fpsTrk << '\n';
+              << "  |  跟踪模块平均 FPS = " << fpsTrk
+              << "  |  总平均 FPS = "  << fps <<'\n';
 }
 
 /* ----------------------------------------------------------

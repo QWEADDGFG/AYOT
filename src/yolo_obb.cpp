@@ -140,10 +140,7 @@ OBBPostProcessor::OBBPostProcessor(size_t boxNum, size_t classNum)
     : modelOutputBoxNum_(boxNum), classNum_(classNum) {}
 
 // YOLOV8_OBB 格式的后处理
-vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData, 
-                                                     int srcWidth, int srcHeight,
-                                                     int modelWidth, int modelHeight,
-                                                     float confidenceThreshold)
+vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData, float confidenceThreshold)
 {
     vector<OBBBoundingBox> boxes;
 
@@ -166,10 +163,10 @@ vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData,
         {
             OBBBoundingBox box;
 
-            float cx = outputData[0 * modelOutputBoxNum_ + i] * srcWidth / modelWidth;
-            float cy = outputData[1 * modelOutputBoxNum_ + i] * srcHeight / modelHeight;
-            float w = outputData[2 * modelOutputBoxNum_ + i] * srcWidth / modelWidth;
-            float h = outputData[3 * modelOutputBoxNum_ + i] * srcHeight / modelHeight;
+            float cx = outputData[0 * modelOutputBoxNum_ + i] ;
+            float cy = outputData[1 * modelOutputBoxNum_ + i] ;
+            float w = outputData[2 * modelOutputBoxNum_ + i] ;
+            float h = outputData[3 * modelOutputBoxNum_ + i];
 
             float raw_angle = 0.0f;
 #if MODEL_ANGLE_MODE == 0
@@ -202,7 +199,7 @@ vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData,
 }
 
 // YOLO11_OBB 格式的后处理
-vector<OBBBoundingBox> OBBPostProcessor::parseOutput_YOLO11OBB(float* outputData, int srcWidth, int srcHeight, int modelWidth, int modelHeight, float confidenceThreshold)
+vector<OBBBoundingBox> OBBPostProcessor::parseOutput_YOLO11OBB(float* outputData, float confidenceThreshold)
 {
     float cx, cy, cw, ch, angle, score;
     float x, y, w, h;
@@ -239,16 +236,6 @@ vector<OBBBoundingBox> OBBPostProcessor::parseOutput_YOLO11OBB(float* outputData
 
             angle = angle * M_PI - (M_PI / 2.0f); //角度反归一化
 
-            cw *= srcWidth / modelWidth;
-            ch *= srcHeight / modelHeight;
-
-            cx *= srcWidth / modelWidth;
-            cy *= srcHeight / modelHeight;
-
-            x *= srcWidth / modelWidth;
-            y *= srcHeight / modelHeight;
-            w *= srcWidth / modelWidth;
-            h *= srcHeight / modelHeight;
 
             OBBNMSProcessor::IoUbyOBBandHBB(cx, cy, cw, ch, angle, x, y, w, h, 0.5f);
             
@@ -723,8 +710,6 @@ bool YOLOOBBInference::postprocessResults(vector<InferenceOutput> &inferOutputs,
 
     vector<OBBBoundingBox> boxes = postProcessor_->parseOutput(
         outputData, 
-        srcImage.cols, srcImage.rows,
-        config_.modelWidth, config_.modelHeight,
         config_.confidenceThreshold);
 
     ACLLITE_LOG_INFO("Filtered %zu OBB boxes by confidence threshold", boxes.size());

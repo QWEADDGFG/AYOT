@@ -1,0 +1,32 @@
+======================================
+ Run started at Fri Sep 19 21:04:23 CST 2025
+======================================
+[INFO] 开始推理...
+Loaded config:
+  Task: track
+  Model: /home/HwHiAiUser/gp/AYOT/model/YOLO11s_guyu_obb_MVRSD_640.om
+  Model Type: YOLO11_OBB
+  Input: /home/HwHiAiUser/gp/DATASETS/testv2
+  Class num: 5
+  Labels: AFV, CV, LMV, MCV, SMV
+
+Init ByteTrack!
+[INFO]  Acl init ok
+[ERROR]  Acl init failed, errorcode is: 100002
+[ERROR]  ACL resource initialization failed
+[Worker [ERROR]  Acl init failed, errorcode is: 100002
+[ERROR]  ACL resource initialization failed
+0] Init detector failed.
+[Worker [INFO]  Model() had not been loaded or unload already
+[INFO]  destroy context ok
+2] Init detector failed.
+[INFO]  Model() had not been loaded or unload already
+[INFO]  destroy context ok
+[INFO]  Reset device 0 ok
+[INFO]  Open device 0 ok
+[INFO]  Use default context currently
+[ERROR]  Get current acl context failed, errorCode is : 107002
+[ERROR]  reset device failed, errorCode is : 507007
+[INFO]  Reset device 0 ok
+[ERROR]  ACL resource initialization failed
+[Worker 1] Init detector failed.

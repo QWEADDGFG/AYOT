@@ -100,15 +100,10 @@ public:
     OBBPostProcessor(size_t boxNum, size_t classNum);
     
     // YOLOV8_OBB 格式的后处理
-    vector<OBBBoundingBox> parseOutput(float *outputData, 
-                                       int srcWidth, int srcHeight,
-                                       int modelWidth, int modelHeight,
-                                       float confidenceThreshold);
+    vector<OBBBoundingBox> parseOutput(float *outputData,float confidenceThreshold);
     
     // YOLO11_OBB 格式的后处理
-    vector<OBBBoundingBox> parseOutput_YOLO11OBB(float* data, int srcWidth, int srcHeight, 
-                                        int modelWidth, int modelHeight, 
-                                        float confidenceThreshold);
+    vector<OBBBoundingBox> parseOutput_YOLO11OBB(float* data,float confidenceThreshold);
 };
 
 class OBBNMSProcessor

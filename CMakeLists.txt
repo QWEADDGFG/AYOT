@@ -19,6 +19,7 @@ find_package(Eigen3 REQUIRED)
 set(OpenCV_DIR "/usr/local")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
+find_package(fmt REQUIRED)   
 
 set(INC_PATH $ENV{DDK_PATH})
 if (NOT DEFINED ENV{DDK_PATH})
@@ -65,6 +66,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC include)
 target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 target_link_libraries(${PROJECT_NAME} ascendcl acl_dvpp stdc++ acllite dl rt)
-
+target_link_libraries(${PROJECT_NAME} fmt::fmt) 
 
 

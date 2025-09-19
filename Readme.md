@@ -95,3 +95,5 @@ chmod +x infer_obb_track.sh
 ./infer_obb_track.sh
 ```
 
+### 关于缩放
+最终选择的还是离线缩放，在
