@@ -3,9 +3,6 @@
 const string label[] = {"AFV", "CV", "LMV", "MCV", "SMV"};
 // const string label[] = {"car"};
 
-// #define min(a,b)            (((a) < (b)) ? (a) : (b))
-// #define max(a,b)            (((a) > (b)) ? (a) : (b))
-
 float max4(float a, float b, float c, float d) {
     float maxv = a;
     if (b > maxv) maxv = b;
