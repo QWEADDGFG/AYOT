@@ -15,8 +15,11 @@ echo "======================================" > "$LOGFILE"
 echo " Run started at $(date)" >> "$LOGFILE"
 echo "======================================" >> "$LOGFILE"
 
-# 只写入日志文件，不在终端显示
-exec >> "$LOGFILE" 2>&1
+# # 只写入日志文件，不在终端显示
+# exec >> "$LOGFILE" 2>&1
+
+# 使用 tee 命令同时输出到终端和文件
+exec > >(tee -a "$LOGFILE") 2>&1
 
 # 推理阶段
 echo "[INFO] 开始推理..."
@@ -56,10 +59,16 @@ cd ./build
 #     --track_image_out ../results/imgs_track 
 
 ./yolo_obb_track track \
-    --model /home/HwHiAiUser/gp/AYOTV2/model/best0919.om \
+    --model /home/HwHiAiUser/gp/AYOT/model/best0919.om \
     --input  /home/HwHiAiUser/gp/DATASETS/testv2 \
     --image_out  ../results/imgs \
     --label_out  ../results/txts \
     --track_image_out ../results/imgs_track 
 
+
 echo "[INFO] 推理完成."
+
+cd ..
+python3 video.py  ./results/imgs_track ./results/output.mp4 --fps 30
+
+echo "[INFO] 视频生成完成."
