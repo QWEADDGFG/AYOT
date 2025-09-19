@@ -1,0 +1,23 @@
+# 任务配置
+# task=detect
+task=track
+model_path=/home/HwHiAiUser/gp/AYOT/model/YOLO11s_base_obb_MVRSD_640.om
+image_input=/home/HwHiAiUser/gp/DATASETS/testv2
+image_output=../results/imgs
+label_output=../results/txts 
+track_image_output=../results/imgs_track 
+
+# 模型参数
+class_num=5
+conf_thresh=0.25
+nms_thresh=0.45
+model_width=640
+model_height=640
+model_box_num=8400
+
+# 模型类型配置 可选值: YOLO11_OBB, YOLOV8_OBB
+model_type=YOLOV8_OBB
+
+
+# 类别标签文件路径
+classes_file=/home/HwHiAiUser/gp/AYOT/classes.txt

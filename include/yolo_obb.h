@@ -22,7 +22,9 @@
 using namespace std;
 using namespace cv;
 
-extern const string label[];
+// 声明全局类别标签访问函数
+const std::vector<std::string>& getClassLabels();
+void setClassLabels(const std::vector<std::string>& labels);
 
 #if __cplusplus < 201402L
 namespace std
@@ -50,7 +52,17 @@ struct OBBBoundingBox
     vector<cv::Point2f> getCornerPoints() const;
     OBBBoundingBox();
 };
-
+struct ScaleInfo
+{
+    float scaleRatio;    // 缩放比例
+    int paddedWidth;     // 缩放后的实际宽度
+    int paddedHeight;    // 缩放后的实际高度
+    int originalWidth;   // 原始宽度
+    int originalHeight;  // 原始高度
+    
+    ScaleInfo() : scaleRatio(1.0f), paddedWidth(0), paddedHeight(0), 
+                  originalWidth(0), originalHeight(0) {}
+};
 class InferenceConfig
 {
 public:
@@ -86,11 +98,17 @@ private:
 
 public:
     OBBPostProcessor(size_t boxNum, size_t classNum);
+    
+    // YOLOV8_OBB 格式的后处理
     vector<OBBBoundingBox> parseOutput(float *outputData, 
                                        int srcWidth, int srcHeight,
                                        int modelWidth, int modelHeight,
                                        float confidenceThreshold);
-    vector<OBBBoundingBox> Tensor2Boxes(float* data, int srcWidth, int srcHeight, int modelWidth, int modelHeight, float confidenceThreshold);
+    
+    // YOLO11_OBB 格式的后处理
+    vector<OBBBoundingBox> parseOutput_YOLO11OBB(float* data, int srcWidth, int srcHeight, 
+                                        int modelWidth, int modelHeight, 
+                                        float confidenceThreshold);
 };
 
 class OBBNMSProcessor
@@ -104,7 +122,8 @@ public:
     static float calculateOBBIOU(const OBBBoundingBox &box1, const OBBBoundingBox &box2);
     static vector<OBBBoundingBox> applyNMS(vector<OBBBoundingBox> &boxes,
                                            float nmsThreshold);
-    static bool IoUbyOBBandHBB(float& cx, float& cy, float& cw, float& ch, float& angle, float x, float y, float w, float h, float thresh);
+    static bool IoUbyOBBandHBB(float& cx, float& cy, float& cw, float& ch, float& angle, 
+                               float x, float y, float w, float h, float thresh);
 };
 
 class OBBResultSaver
@@ -123,7 +142,6 @@ private:
                                   const string &imagePath,
                                   const string &outputPath);
 };
-
 
 class YOLOOBBInference
 {

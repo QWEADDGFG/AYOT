@@ -1,7 +1,16 @@
 #include "yolo_obb.h"
 
-const string label[] = {"AFV", "CV", "LMV", "MCV", "SMV"};
-// const string label[] = {"car"};
+// 全局变量改为动态加载
+std::vector<std::string> g_class_labels;
+
+// 提供访问接口
+const std::vector<std::string>& getClassLabels() {
+    return g_class_labels;
+}
+
+void setClassLabels(const std::vector<std::string>& labels) {
+    g_class_labels = labels;
+}
 
 float max4(float a, float b, float c, float d) {
     float maxv = a;
@@ -125,9 +134,12 @@ float Utils::normalizeAngle(float angle)
     return angle;
 }
 
+
+
 OBBPostProcessor::OBBPostProcessor(size_t boxNum, size_t classNum)
     : modelOutputBoxNum_(boxNum), classNum_(classNum) {}
 
+// YOLOV8_OBB 格式的后处理
 vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData, 
                                                      int srcWidth, int srcHeight,
                                                      int modelWidth, int modelHeight,
@@ -189,7 +201,8 @@ vector<OBBBoundingBox> OBBPostProcessor::parseOutput(float *outputData,
     return boxes;
 }
 
-vector<OBBBoundingBox> OBBPostProcessor::Tensor2Boxes(float* outputData, int srcWidth, int srcHeight, int modelWidth, int modelHeight, float confidenceThreshold)
+// YOLO11_OBB 格式的后处理
+vector<OBBBoundingBox> OBBPostProcessor::parseOutput_YOLO11OBB(float* outputData, int srcWidth, int srcHeight, int modelWidth, int modelHeight, float confidenceThreshold)
 {
     float cx, cy, cw, ch, angle, score;
     float x, y, w, h;
@@ -245,11 +258,6 @@ vector<OBBBoundingBox> OBBPostProcessor::Tensor2Boxes(float* outputData, int src
             box.width = cw;
             box.height = ch;
             box.angle = angle;
-            // box.cx = x;
-            // box.cy = y;
-            // box.width = w;
-            // box.height = h;
-            // box.angle = 0.0f;
             box.confidence = maxValue;
             box.classIndex = maxIndex;
             box.index = i;
@@ -259,98 +267,7 @@ vector<OBBBoundingBox> OBBPostProcessor::Tensor2Boxes(float* outputData, int src
     }   
     return boxes;
 }
-// vector<OBBBoundingBox> OBBPostProcessor::Tensor2Boxes(float* outputData, int srcWidth, int srcHeight, int modelWidth, int modelHeight, float confidenceThreshold)
-// {
-//     float cx, cy, cw, ch, angle, score;
-//     float x, y, w, h;
 
-//     vector<OBBBoundingBox> boxes;
-
-//     // 打开日志文件，使用追加模式
-//     FILE* logFile = fopen("/home/HwHiAiUser/gp/AYOTV2/results/test.log", "a");
-//     if (logFile == nullptr) {
-//         printf("Warning: Cannot open log file\n");
-//     }
-
-//     for (size_t i = 0; i < modelOutputBoxNum_; ++i)
-//     {
-//         float maxValue = 0.0f;
-//         size_t maxIndex = 0;
-
-//         for (size_t j = 0; j < classNum_; ++j)
-//         {
-//             float value = outputData[(9 + j) * modelOutputBoxNum_ + i];
-//             if (value > maxValue)
-//             {
-//                 maxValue = value;
-//                 maxIndex = j;
-//             }
-//         }
-
-//         score = outputData[4 * modelOutputBoxNum_ + i];
-//         if (maxValue >= confidenceThreshold && score >= confidenceThreshold)
-//         {
-//             cx = outputData[0 * modelOutputBoxNum_ + i];
-//             cy = outputData[1 * modelOutputBoxNum_ + i];
-//             cw = outputData[2 * modelOutputBoxNum_ + i];
-//             ch = outputData[3 * modelOutputBoxNum_ + i];
-//             x = outputData[5 * modelOutputBoxNum_ + i];
-//             y = outputData[6 * modelOutputBoxNum_ + i];
-//             w = outputData[7 * modelOutputBoxNum_ + i];
-//             h = outputData[8 * modelOutputBoxNum_ + i];
-            
-//             // 获取原始角度并记录
-//             float raw_angle = outputData[(9 + classNum_) * modelOutputBoxNum_ + i];
-            
-//             // 记录到日志文件
-//             if (logFile != nullptr) {
-//                 fprintf(logFile, "Box[%zu]: raw_angle=%.6f", i, raw_angle);
-//             }
-            
-//             angle = raw_angle * M_PI - (M_PI / 2.0f);
-//             // angle = -1 * angle;
-//             // angle = - angle * M_PI;
-            
-//             // 记录处理后的角度
-//             if (logFile != nullptr) {
-//                 fprintf(logFile, ", processed_angle=%.6f, confidence=%.3f, class=%zu\n", 
-//                        angle, maxValue, maxIndex);
-//             }
-            
-//             // angle = Utils::normalizeAngle(angle);
-
-//             cw *= srcWidth / modelWidth;
-//             ch *= srcHeight / modelHeight;
-
-//             cx *= srcWidth / modelWidth;
-//             cy *= srcHeight / modelHeight;
-
-//             x *= srcWidth / modelWidth;
-//             y *= srcHeight / modelHeight;
-//             w *= srcWidth / modelWidth;
-//             h *= srcHeight / modelHeight;
-
-//             OBBBoundingBox box;
-//             box.cx = cx;
-//             box.cy = cy;
-//             box.width = cw;
-//             box.height = ch;
-//             box.angle = angle;
-//             box.confidence = maxValue;
-//             box.classIndex = maxIndex;
-//             box.index = i;
-
-//             boxes.push_back(box);
-//         }
-//     }
-    
-//     // 关闭日志文件
-//     if (logFile != nullptr) {
-//         fclose(logFile);
-//     }
-    
-//     return boxes;
-// }
 bool OBBNMSProcessor::IoUbyOBBandHBB(float& cx, float& cy, float& cw, float& ch, float& angle, float x, float y, float w, float h, float thresh)
 {
     float cos_a = cos(angle);
@@ -557,15 +474,19 @@ void OBBResultSaver::saveTxtFile(const vector<OBBBoundingBox> &boxes,
         return;
     }
 
+    const auto& labels = getClassLabels();
     for (const auto &box : boxes)
     {
         vector<cv::Point2f> points = box.getCornerPoints();
+        
+        string className = (box.classIndex < labels.size()) ? 
+                          labels[box.classIndex] : "unknown";
 
         txtFile << points[0].x << " " << points[0].y << " "
                 << points[1].x << " " << points[1].y << " "
                 << points[2].x << " " << points[2].y << " "
                 << points[3].x << " " << points[3].y << " "
-                << label[box.classIndex] << " "
+                << className << " "
                 << box.confidence << endl;
     }
     txtFile.close();
@@ -589,6 +510,7 @@ void OBBResultSaver::saveVisualization(const vector<OBBBoundingBox> &boxes,
         cv::Scalar(128, 128, 0), cv::Scalar(128, 0, 128), cv::Scalar(0, 128, 128),
         cv::Scalar(64, 64, 64), cv::Scalar(192, 192, 192), cv::Scalar(255, 128, 0)};
 
+    const auto& labels = getClassLabels();
     for (size_t i = 0; i < boxes.size(); ++i)
     {
         const auto &box = boxes[i];
@@ -607,7 +529,8 @@ void OBBResultSaver::saveVisualization(const vector<OBBBoundingBox> &boxes,
 
         circle(srcImage, Point(static_cast<int>(round(box.cx)), static_cast<int>(round(box.cy))), 3, color, -1);
 
-        string className = (box.classIndex < 5) ? label[box.classIndex] : "unknown";
+        string className = (box.classIndex < labels.size()) ? 
+                          labels[box.classIndex] : "unknown";
         char confBuf[32];
         snprintf(confBuf, sizeof(confBuf), "%.3f", box.confidence);
         string markString = className + ":" + confBuf;

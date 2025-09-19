@@ -3,8 +3,8 @@ import os
 from PIL import Image
 
 SRC_DIR = '/home/HwHiAiUser/gp/DATASETS/testv2'
-DST_DIR = '/home/HwHiAiUser/gp/DATASETS/testv2_800_02'
-TARGET_SIZE = (800, 800)
+DST_DIR = '/home/HwHiAiUser/gp/DATASETS/testv2_320_02'
+TARGET_SIZE = (320, 320)
 
 def resize_keep_aspect(img: Image.Image) -> Image.Image:
     """等比例缩放+左上角对齐填充到目标尺寸"""
