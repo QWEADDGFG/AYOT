@@ -102,4 +102,167 @@ chmod +x infer_obb_track_config.sh
 ./infer_obb_track_config.sh
 ```
 
-### 4. 详细输出见run.md
+### 4. 样例目录结构：
+```bash
+tree
+.
+├── CMakeLists.txt
+├── LICENSE
+├── Readme.md
+├── build
+│   ├── CMakeCache.txt
+│   ├── CMakeFiles
+│   │   ├── 3.22.1
+│   │   │   ├── CMakeCCompiler.cmake
+│   │   │   ├── CMakeCXXCompiler.cmake
+│   │   │   ├── CMakeDetermineCompilerABI_C.bin
+│   │   │   ├── CMakeDetermineCompilerABI_CXX.bin
+│   │   │   ├── CMakeSystem.cmake
+│   │   │   ├── CompilerIdC
+│   │   │   │   ├── CMakeCCompilerId.c
+│   │   │   │   ├── a.out
+│   │   │   │   └── tmp
+│   │   │   └── CompilerIdCXX
+│   │   │       ├── CMakeCXXCompilerId.cpp
+│   │   │       ├── a.out
+│   │   │       └── tmp
+│   │   ├── CMakeDirectoryInformation.cmake
+│   │   ├── CMakeOutput.log
+│   │   ├── CMakeTmp
+│   │   ├── Makefile.cmake
+│   │   ├── Makefile2
+│   │   ├── TargetDirectories.txt
+│   │   ├── cmake.check_cache
+│   │   ├── progress.marks
+│   │   └── yolo_obb_track.dir
+│   │       ├── DependInfo.cmake
+│   │       ├── build.make
+│   │       ├── cmake_clean.cmake
+│   │       ├── compiler_depend.internal
+│   │       ├── compiler_depend.make
+│   │       ├── compiler_depend.ts
+│   │       ├── depend.make
+│   │       ├── flags.make
+│   │       ├── link.txt
+│   │       ├── main_all.cpp.o
+│   │       ├── main_all.cpp.o.d
+│   │       ├── progress.make
+│   │       └── src
+│   │           ├── BYTETracker_obb.cpp.o
+│   │           ├── BYTETracker_obb.cpp.o.d
+│   │           ├── STrack_obb.cpp.o
+│   │           ├── STrack_obb.cpp.o.d
+│   │           ├── kalmanFilter_obb.cpp.o
+│   │           ├── kalmanFilter_obb.cpp.o.d
+│   │           ├── lapjv.cpp.o
+│   │           ├── lapjv.cpp.o.d
+│   │           ├── utils_obb.cpp.o
+│   │           ├── utils_obb.cpp.o.d
+│   │           ├── yolo_obb.cpp.o
+│   │           └── yolo_obb.cpp.o.d
+│   ├── Makefile
+│   ├── cmake_install.cmake
+│   └── yolo_obb_track
+├── classes.txt
+├── config_YOLO11OBB.txt
+├── config_YOLOV8OBB.txt
+├── git.sh
+├── include
+│   ├── BYTETracker_obb.h
+│   ├── STrack_obb.h
+│   ├── dataType_obb.h
+│   ├── kalmanFilter_obb.h
+│   ├── lapjv.h
+│   └── yolo_obb.h
+├── infer_obb_track.sh
+├── main_all.cpp
+├── model
+│   ├── YOLO11s_base_obb_MVRSD_640.om
+│   ├── YOLO11s_guyu_obb_MVRSD_640.om
+│   └── aipp640.cfg
+├── resize_and_back.py
+├── resize_metadata.json
+├── results
+│   ├── imgs
+│   │   ├── 000001.jpg
+│   │   ├── 000002.jpg
+│   │   ├── 000003.jpg
+│   │   ├── 000004.jpg
+│   │   ├── 000005.jpg
+│   │   ├── 000006.jpg
+│   │   ├── 000007.jpg
+│   │   ├── 000008.jpg
+│   │   ├── 000009.jpg
+│   │   └── 000010.jpg
+│   ├── imgs_no_bg
+│   │   ├── 000001.jpg
+│   │   ├── 000002.jpg
+│   │   ├── 000003.jpg
+│   │   ├── 000004.jpg
+│   │   ├── 000005.jpg
+│   │   ├── 000006.jpg
+│   │   ├── 000007.jpg
+│   │   ├── 000008.jpg
+│   │   ├── 000009.jpg
+│   │   └── 000010.jpg
+│   ├── imgs_track
+│   │   ├── 000001.jpg
+│   │   ├── 000002.jpg
+│   │   ├── 000003.jpg
+│   │   ├── 000004.jpg
+│   │   ├── 000005.jpg
+│   │   ├── 000006.jpg
+│   │   ├── 000007.jpg
+│   │   ├── 000008.jpg
+│   │   ├── 000009.jpg
+│   │   └── 000010.jpg
+│   └── txts
+│       ├── 000001.txt
+│       ├── 000002.txt
+│       ├── 000003.txt
+│       ├── 000004.txt
+│       ├── 000005.txt
+│       ├── 000006.txt
+│       ├── 000007.txt
+│       ├── 000008.txt
+│       ├── 000009.txt
+│       └── 000010.txt
+├── run.md
+├── run_build.sh
+├── src
+│   ├── BYTETracker_obb.cpp
+│   ├── STrack_obb.cpp
+│   ├── kalmanFilter_obb.cpp
+│   ├── lapjv.cpp
+│   ├── utils_obb.cpp
+│   └── yolo_obb.cpp
+├── testdata
+│   ├── 640
+│   │   ├── 000000.jpg
+│   │   ├── 000001.jpg
+│   │   ├── 000002.jpg
+│   │   ├── 000003.jpg
+│   │   ├── 000004.jpg
+│   │   ├── 000005.jpg
+│   │   ├── 000006.jpg
+│   │   ├── 000007.jpg
+│   │   ├── 000008.jpg
+│   │   ├── 000009.jpg
+│   │   └── 000010.jpg
+│   └── back
+│       ├── 000000.jpg
+│       ├── 000001.jpg
+│       ├── 000002.jpg
+│       ├── 000003.jpg
+│       ├── 000004.jpg
+│       ├── 000005.jpg
+│       ├── 000006.jpg
+│       ├── 000007.jpg
+│       ├── 000008.jpg
+│       ├── 000009.jpg
+│       └── 000010.jpg
+└── video.py
+
+21 directories, 135 files
+```
+
