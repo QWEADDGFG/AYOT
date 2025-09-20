@@ -1,0 +1,167 @@
+{
+  "000008.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000004.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000010.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000007.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000000.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000009.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000002.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000001.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000006.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000003.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  },
+  "000005.jpg": {
+    "original_size": [
+      800,
+      500
+    ],
+    "scaled_size": [
+      640,
+      400
+    ],
+    "scale_factor": 0.8,
+    "target_size": [
+      640,
+      640
+    ]
+  }
+}

@@ -563,8 +563,7 @@ static void runTrack(const Config& config)
     double fpsTrk = frameCnt * 1'000'000.0 / totalTrkUs;
     double fps = (frameCnt * 1'000'000.0) / ( totalTrkUs + totalDetUs);
     std::cout << "[Track] 检测模块平均 FPS = " << fpsDet
-              << "  |  跟踪模块平均 FPS = " << fpsTrk
-              << "  |  总平均 FPS = "  << fps <<'\n';
+              << "  |  跟踪模块平均 FPS = " << fpsTrk<< "\n";
 }
 
 /* ----------------------------------------------------------

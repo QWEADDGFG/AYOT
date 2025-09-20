@@ -2,8 +2,7 @@
 # task=detect
 task=track
 model_path=/home/HwHiAiUser/gp/AYOT/model/YOLO11s_guyu_obb_MVRSD_640.om
-# image_input=/home/HwHiAiUser/gp/DATASETS/testv2_320_02
-image_input=/home/HwHiAiUser/gp/DATASETS/testv2
+image_input=/home/HwHiAiUser/gp/AYOT/testdata/640
 image_output=../results/imgs
 label_output=../results/txts 
 track_image_output=../results/imgs_track 
